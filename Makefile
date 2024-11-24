@@ -1,4 +1,4 @@
-DATABASE_URL := postgres://postgres:123@localhost:5432/db?sslmode=disable
+DATABASE_URL := postgres://postgres:123@localhost:5432/property?sslmode=disable
 MIGRATIONS_PATH := ./migrations
 
 

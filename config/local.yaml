@@ -15,7 +15,7 @@ postgres:
   port: 5432
   user: postgres
   password: 123
-  db_name: db
+  db_name: property
   ssl_mode: false
 
 
