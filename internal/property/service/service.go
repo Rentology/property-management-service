@@ -55,3 +55,19 @@ func (s *propertyService) GetByOwnerId(ctx context.Context, id int64) ([]*models
 	}
 	return properties, nil
 }
+
+func (s *propertyService) Delete(ctx context.Context, id int64) (int64, error) {
+	deleteId, err := s.propertyRepo.Delete(ctx, id)
+	if err != nil {
+		return 0, err
+	}
+	return deleteId, nil
+}
+
+func (s *propertyService) Update(ctx context.Context, property *models.Property) (*models.Property, error) {
+	property, err := s.propertyRepo.Update(ctx, property)
+	if err != nil {
+		return nil, err
+	}
+	return property, nil
+}

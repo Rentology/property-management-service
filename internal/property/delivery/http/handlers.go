@@ -16,6 +16,7 @@ type PropertyService interface {
 	Create(ctx context.Context, property *models.Property) (*models.Property, error)
 	GetById(ctx context.Context, id int64) (*models.Property, error)
 	GetByOwnerId(ctx context.Context, id int64) ([]*models.Property, error)
+	Delete(ctx context.Context, id int64) (int64, error)
 }
 
 type propertyHandlers struct {
@@ -85,5 +86,24 @@ func (h *propertyHandlers) GetProperties() echo.HandlerFunc {
 		}
 
 		return c.JSON(http.StatusBadRequest, httpErrors.NewBadRequestError("either id or ownerId must be provided"))
+	}
+}
+
+func (h *propertyHandlers) DeleteProperty() echo.HandlerFunc {
+	return func(c echo.Context) error {
+		ctx := utils.GetRequestCtx(c)
+		requestID := utils.GetRequestID(c)
+		h.log.Info("Handling DeleteProperty", slog.String("request_id", requestID))
+		id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+		if err != nil {
+			utils.LogResponseError(c, h.log, err)
+			return c.JSON(httpErrors.ErrorResponse(err))
+		}
+		deletedId, err := h.propertyService.Delete(ctx, id)
+		if err != nil {
+			utils.LogResponseError(c, h.log, err)
+			return c.JSON(httpErrors.ErrorResponse(err))
+		}
+		return c.JSON(http.StatusOK, deletedId)
 	}
 }
