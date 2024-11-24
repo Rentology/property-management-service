@@ -17,6 +17,7 @@ type PropertyService interface {
 	GetById(ctx context.Context, id int64) (*models.Property, error)
 	GetByOwnerId(ctx context.Context, id int64) ([]*models.Property, error)
 	Delete(ctx context.Context, id int64) (int64, error)
+	Update(ctx context.Context, property *models.Property) (*models.Property, error)
 }
 
 type propertyHandlers struct {
@@ -105,5 +106,24 @@ func (h *propertyHandlers) DeleteProperty() echo.HandlerFunc {
 			return c.JSON(httpErrors.ErrorResponse(err))
 		}
 		return c.JSON(http.StatusOK, deletedId)
+	}
+}
+
+func (h *propertyHandlers) UpdateProperty() echo.HandlerFunc {
+	return func(c echo.Context) error {
+		ctx := utils.GetRequestCtx(c)
+		requestID := utils.GetRequestID(c)
+		h.log.Info("Handling UpdateProperty", slog.String("request_id", requestID))
+		property := &models.Property{}
+		if err := utils.ReadRequest(c, property); err != nil {
+			utils.LogResponseError(c, h.log, err)
+			return c.JSON(httpErrors.ErrorResponse(err))
+		}
+		property, err := h.propertyService.Update(ctx, property)
+		if err != nil {
+			utils.LogResponseError(c, h.log, err)
+			return c.JSON(httpErrors.ErrorResponse(err))
+		}
+		return c.JSON(http.StatusOK, property)
 	}
 }
