@@ -1,0 +1,23 @@
+app:
+  name: property-management-service
+  env: local
+  version: 1.0.0
+
+server:
+  host: localhost
+  port: 8083
+  ssl: false
+  jwt_secret_key: test-secret
+  csrf: false
+
+postgres:
+  host: localhost
+  port: 5432
+  user: postgres
+  password: 123
+  db_name: db
+  ssl_mode: false
+
+
+
+
