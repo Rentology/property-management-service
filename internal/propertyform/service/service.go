@@ -32,7 +32,6 @@ func NewPropertyFormService(
 }
 
 func (s *propertyFormService) SavePropertyForm(ctx context.Context, form *request.AddPropertyRequest) error {
-	fmt.Println("here")
 	tx, err := s.transactionManager.BeginTransaction(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to start transaction: %w", err)
@@ -70,8 +69,6 @@ func (s *propertyFormService) SavePropertyForm(ctx context.Context, form *reques
 		return fmt.Errorf("failed to save property details: %w", err)
 	}
 
-	fmt.Println(form.PropertyDetails.PropertyID)
-
 	if len(form.Images) > 0 {
 		err = s.imageService.UploadImagesFromBase64(ctx, form.Images, form.Property.ID, tx)
 		if err != nil {
@@ -80,5 +77,44 @@ func (s *propertyFormService) SavePropertyForm(ctx context.Context, form *reques
 		}
 	}
 
+	return tx.Commit()
+}
+
+func (s *propertyFormService) DeletePropertyForm(ctx context.Context, propertyID int64) error {
+	// Начало транзакции
+	tx, err := s.transactionManager.BeginTransaction(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to start transaction: %w", err)
+	}
+
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+			panic(r)
+		}
+	}()
+
+	// Удаление изображений, связанных с объектом
+	err = s.imageService.DeleteImagesByPropertyId(ctx, propertyID, tx)
+	if err != nil {
+		tx.Rollback()
+		return fmt.Errorf("failed to delete images: %w", err)
+	}
+
+	// Удаление деталей собственности
+	err = s.propertyDetailsService.DeleteWithTx(ctx, propertyID, tx)
+	if err != nil {
+		tx.Rollback()
+		return fmt.Errorf("failed to delete property details: %w", err)
+	}
+
+	// Удаление самой собственности
+	err = s.propertyService.DeleteWithTx(ctx, propertyID, tx)
+	if err != nil {
+		tx.Rollback()
+		return fmt.Errorf("failed to delete property: %w", err)
+	}
+
+	// Коммит транзакции
 	return tx.Commit()
 }

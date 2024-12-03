@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/jmoiron/sqlx"
 	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/middleware"
 	"log/slog"
 	"net/http"
 	"os"
@@ -33,6 +34,7 @@ func NewServer(cfg *config.Config, db *sqlx.DB, log *slog.Logger) *Server {
 }
 
 func (s *Server) Run() error {
+	s.echo.Use(middleware.BodyLimit("20M"))
 	server := &http.Server{
 		Addr:         ":" + strconv.Itoa(s.cfg.Server.Port),
 		ReadTimeout:  time.Second * 5,

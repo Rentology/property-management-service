@@ -24,6 +24,7 @@ type ImageService interface {
 	GetImagesByPropertyId(ctx context.Context, propertyId int64) ([]models.Image, error)
 	UploadImageFromBase64(ctx context.Context, base64Image string, propertyId int64, tx *sqlx.Tx) error
 	UploadImagesFromBase64(ctx context.Context, base64Images []string, propertyId int64, tx *sqlx.Tx) error
+	DeleteImagesByPropertyId(ctx context.Context, propertyId int64, tx *sqlx.Tx) error
 }
 
 type imageHandlers struct {

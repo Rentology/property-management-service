@@ -18,6 +18,7 @@ type PropertyDetailsService interface {
 	Update(ctx context.Context, details *models.PropertyDetails) (*models.PropertyDetails, error)
 	Delete(ctx context.Context, id int64) (int64, error)
 	SaveWithTx(ctx context.Context, details *models.PropertyDetails, tx *sqlx.Tx) error
+	DeleteWithTx(ctx context.Context, id int64, tx *sqlx.Tx) error
 }
 
 type propertyDetailsHandlers struct {

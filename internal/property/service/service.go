@@ -17,6 +17,7 @@ type PropertyRepository interface {
 	Update(ctx context.Context, property *models.Property) (*models.Property, error)
 	Delete(ctx context.Context, id int64) (int64, error)
 	SaveWithTx(ctx context.Context, property *models.Property, tx *sqlx.Tx) error
+	DeleteWithTx(ctx context.Context, id int64, tx *sqlx.Tx) error
 }
 
 type propertyService struct {
@@ -77,4 +78,12 @@ func (s *propertyService) Update(ctx context.Context, property *models.Property)
 func (s *propertyService) SaveWithTx(ctx context.Context, property *models.Property, tx *sqlx.Tx) error {
 	property.CreatedAt = time.Now().Format("2006-01-2")
 	return s.propertyRepo.SaveWithTx(ctx, property, tx)
+}
+
+func (s *propertyService) DeleteWithTx(ctx context.Context, id int64, tx *sqlx.Tx) error {
+	err := s.propertyRepo.DeleteWithTx(ctx, id, tx)
+	if err != nil {
+		return err
+	}
+	return nil
 }

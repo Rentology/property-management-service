@@ -14,6 +14,7 @@ type PropertyDetailsRepository interface {
 	Update(ctx context.Context, details *models.PropertyDetails) (*models.PropertyDetails, error)
 	Delete(ctx context.Context, id int64) (int64, error)
 	SaveWithTx(ctx context.Context, details *models.PropertyDetails, tx *sqlx.Tx) error
+	DeleteWithTx(ctx context.Context, id int64, tx *sqlx.Tx) error
 }
 
 type propertyDetailsService struct {
@@ -62,4 +63,12 @@ func (s *propertyDetailsService) Delete(ctx context.Context, id int64) (int64, e
 
 func (s *propertyDetailsService) SaveWithTx(ctx context.Context, details *models.PropertyDetails, tx *sqlx.Tx) error {
 	return s.propertyDetailsRepository.SaveWithTx(ctx, details, tx)
+}
+
+func (s *propertyDetailsService) DeleteWithTx(ctx context.Context, id int64, tx *sqlx.Tx) error {
+	err := s.propertyDetailsRepository.DeleteWithTx(ctx, id, tx)
+	if err != nil {
+		return err
+	}
+	return nil
 }

@@ -21,6 +21,7 @@ type ImageRepository interface {
 	SaveImageWithTx(ctx context.Context, image *models.Image, tx *sqlx.Tx) (*models.Image, error)
 	GetImage(ctx context.Context, id int64) (*models.Image, error)
 	GetImagesByPropertyID(ctx context.Context, propertyID int64) ([]models.Image, error)
+	DeleteWithTx(ctx context.Context, id int64, tx *sqlx.Tx) error
 }
 
 type imageService struct {
@@ -189,4 +190,25 @@ func (s *imageService) GetImagesByPropertyId(ctx context.Context, propertyId int
 		return nil, err
 	}
 	return images, nil
+}
+
+func (s *imageService) DeleteImageWithTx(ctx context.Context, imageId int64, tx *sqlx.Tx) error {
+	err := s.imageRepo.DeleteWithTx(ctx, imageId, tx)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *imageService) DeleteImagesByPropertyId(ctx context.Context, propertyId int64, tx *sqlx.Tx) error {
+	images, err := s.GetImagesByPropertyId(ctx, propertyId)
+	if err != nil {
+		return err
+	}
+	for _, image := range images {
+		if err := s.DeleteImageWithTx(ctx, image.Id, tx); err != nil {
+			return err
+		}
+	}
+	return nil
 }

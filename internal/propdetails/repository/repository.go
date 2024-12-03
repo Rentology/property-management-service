@@ -73,3 +73,15 @@ func (r *propDetailsRepository) SaveWithTx(ctx context.Context, details *models.
 	}
 	return nil
 }
+
+func (r *propDetailsRepository) DeleteWithTx(ctx context.Context, id int64, tx *sqlx.Tx) error {
+	const op = "propDetailsRepository.DeleteWithTx"
+	query := `DELETE FROM property_details WHERE property_id = $1 RETURNING property_id`
+	var deletedID int64
+	// Выполняем DELETE и возвращаем id удалённой записи
+	err := tx.QueryRowxContext(ctx, query, id).Scan(&deletedID)
+	if err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+	return nil
+}

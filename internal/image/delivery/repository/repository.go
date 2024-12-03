@@ -71,3 +71,16 @@ func (r *imageRepository) SaveImageWithTx(ctx context.Context, image *models.Ima
 	}
 	return image, nil
 }
+
+func (r *imageRepository) DeleteWithTx(ctx context.Context, id int64, tx *sqlx.Tx) error {
+	const op = "imageRepository.DeleteWithTx"
+	query := `DELETE FROM properties_images WHERE id = $1 RETURNING id`
+
+	var deletedID int64
+	// Выполняем DELETE и возвращаем id удалённой записи
+	err := tx.QueryRowxContext(ctx, query, id).Scan(&deletedID)
+	if err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+	return nil
+}

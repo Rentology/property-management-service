@@ -21,10 +21,12 @@ type PropertyService interface {
 	Delete(ctx context.Context, id int64) (int64, error)
 	Update(ctx context.Context, property *models.Property) (*models.Property, error)
 	SaveWithTx(ctx context.Context, property *models.Property, tx *sqlx.Tx) error
+	DeleteWithTx(ctx context.Context, id int64, tx *sqlx.Tx) error
 }
 
 type PropertyFormService interface {
 	SavePropertyForm(ctx context.Context, form *request.AddPropertyRequest) error
+	DeletePropertyForm(ctx context.Context, propertyID int64) error
 }
 
 type propertyHandlers struct {
@@ -44,10 +46,20 @@ func (h *propertyHandlers) CreateProperty() echo.HandlerFunc {
 		requestID := utils.GetRequestID(c)
 		h.log.Info("Handling Create", slog.String("request_id", requestID))
 		property := &models.Property{}
+
 		if err := utils.ReadRequest(c, property); err != nil {
 			utils.LogResponseError(c, h.log, err)
 			return c.JSON(httpErrors.ErrorResponse(err))
 		}
+
+		userClaims := c.Get("user").(map[string]interface{})
+		userIdFromClaims := userClaims["uid"].(float64)
+
+		if (int64(userIdFromClaims)) != property.OwnerId {
+			utils.LogResponseError(c, h.log, httpErrors.Unauthorized)
+			return c.JSON(http.StatusUnauthorized, httpErrors.Unauthorized)
+		}
+
 		property, err := h.propertyService.Create(ctx, property)
 		if err != nil {
 			utils.LogResponseError(c, h.log, err)
@@ -148,6 +160,11 @@ func (h *propertyHandlers) SavePropertyForm() echo.HandlerFunc {
 			return c.JSON(httpErrors.ErrorResponse(err))
 		}
 
+		userClaims := c.Get("user").(map[string]interface{})
+		userIdFromClaims := userClaims["uid"].(float64)
+
+		r.Property.OwnerId = int64(userIdFromClaims)
+
 		err := h.propertyServiceForm.SavePropertyForm(ctx, r)
 		if err != nil {
 			return c.JSON(http.StatusInternalServerError, map[string]string{
@@ -160,5 +177,41 @@ func (h *propertyHandlers) SavePropertyForm() echo.HandlerFunc {
 		})
 
 	}
+}
 
+func (h *propertyHandlers) DeletePropertyForm() echo.HandlerFunc {
+	return func(c echo.Context) error {
+		ctx := utils.GetRequestCtx(c)
+		requestID := utils.GetRequestID(c)
+		h.log.Info("Handling DeleteProperty", slog.String("request_id", requestID))
+		id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+		if err != nil {
+			utils.LogResponseError(c, h.log, err)
+			return c.JSON(httpErrors.ErrorResponse(err))
+		}
+
+		userClaims := c.Get("user").(map[string]interface{})
+		userIdFromClaims := userClaims["uid"].(float64)
+
+		property, err := h.propertyService.GetById(ctx, id)
+		if err != nil {
+			return c.JSON(httpErrors.ErrorResponse(err))
+		}
+
+		if (int64(userIdFromClaims)) != property.OwnerId {
+			utils.LogResponseError(c, h.log, httpErrors.Unauthorized)
+			return c.JSON(http.StatusUnauthorized, httpErrors.Unauthorized)
+		}
+
+		err = h.propertyServiceForm.DeletePropertyForm(ctx, id)
+		if err != nil {
+			return c.JSON(http.StatusInternalServerError, map[string]string{
+				"error": err.Error(),
+			})
+		}
+
+		return c.JSON(http.StatusCreated, map[string]string{
+			"message": "Property removed successfully",
+		})
+	}
 }

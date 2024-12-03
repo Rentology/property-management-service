@@ -11,13 +11,15 @@ type PropertyHandlers interface {
 	DeleteProperty() echo.HandlerFunc
 	UpdateProperty() echo.HandlerFunc
 	SavePropertyForm() echo.HandlerFunc
+	DeletePropertyForm() echo.HandlerFunc
 }
 
 func MapPropertyRoutes(propertyGroup *echo.Group, h PropertyHandlers, mw *middleware.MiddlewareManager) {
-	propertyGroup.POST("", h.CreateProperty())
+	propertyGroup.POST("", h.CreateProperty(), mw.AuthJWTMiddleware())
 	propertyGroup.GET("", h.GetProperties())
-	propertyGroup.DELETE("/:id", h.DeleteProperty())
-	propertyGroup.PUT("", h.UpdateProperty())
-	propertyGroup.POST("/form", h.SavePropertyForm())
+	propertyGroup.DELETE("/:id", h.DeleteProperty(), mw.AuthJWTMiddleware())
+	propertyGroup.PUT("", h.UpdateProperty(), mw.AuthJWTMiddleware())
+	propertyGroup.POST("/form", h.SavePropertyForm(), mw.AuthJWTMiddleware())
+	propertyGroup.DELETE("/form/:id", h.DeletePropertyForm(), mw.AuthJWTMiddleware())
 
 }
