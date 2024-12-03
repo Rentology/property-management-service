@@ -91,3 +91,26 @@ func (r *propertyRepository) Delete(ctx context.Context, id int64) (int64, error
 
 	return deletedID, nil
 }
+
+func (r *propertyRepository) SaveWithTx(ctx context.Context, property *models.Property, tx *sqlx.Tx) error {
+	query := `INSERT INTO properties (owner_id, title, location, price, property_type, rental_type, max_guests, created_at)
+			  VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+			  RETURNING id`
+
+	// Передаём параметры в порядке их появления
+	err := tx.QueryRowxContext(ctx, query,
+		property.OwnerId,
+		property.Title,
+		property.Location,
+		property.Price,
+		property.PropertyType,
+		property.RentalType,
+		property.MaxGuests,
+		property.CreatedAt,
+	).Scan(&property.ID)
+
+	if err != nil {
+		return fmt.Errorf("failed to insert property: %w", err)
+	}
+	return nil
+}

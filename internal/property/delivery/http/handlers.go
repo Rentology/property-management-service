@@ -2,11 +2,13 @@ package http
 
 import (
 	"context"
+	"github.com/jmoiron/sqlx"
 	"github.com/labstack/echo/v4"
 	"log/slog"
 	"net/http"
 	"property-managment-service/internal/config"
 	"property-managment-service/internal/models"
+	"property-managment-service/internal/models/request"
 	"property-managment-service/pkg/httpErrors"
 	"property-managment-service/pkg/utils"
 	"strconv"
@@ -18,16 +20,22 @@ type PropertyService interface {
 	GetByOwnerId(ctx context.Context, id int64) ([]*models.Property, error)
 	Delete(ctx context.Context, id int64) (int64, error)
 	Update(ctx context.Context, property *models.Property) (*models.Property, error)
+	SaveWithTx(ctx context.Context, property *models.Property, tx *sqlx.Tx) error
+}
+
+type PropertyFormService interface {
+	SavePropertyForm(ctx context.Context, form *request.AddPropertyRequest) error
 }
 
 type propertyHandlers struct {
-	cfg             *config.Config
-	propertyService PropertyService
-	log             *slog.Logger
+	propertyService     PropertyService
+	propertyServiceForm PropertyFormService
+	cfg                 *config.Config
+	log                 *slog.Logger
 }
 
-func NewPropertyHandlers(cfg *config.Config, propertyService PropertyService, log *slog.Logger) PropertyHandlers {
-	return &propertyHandlers{cfg, propertyService, log}
+func NewPropertyHandlers(propertyService PropertyService, propertyServiceForm PropertyFormService, cfg *config.Config, log *slog.Logger) PropertyHandlers {
+	return &propertyHandlers{propertyService: propertyService, propertyServiceForm: propertyServiceForm, cfg: cfg, log: log}
 }
 
 func (h *propertyHandlers) CreateProperty() echo.HandlerFunc {
@@ -126,4 +134,31 @@ func (h *propertyHandlers) UpdateProperty() echo.HandlerFunc {
 		}
 		return c.JSON(http.StatusOK, property)
 	}
+}
+
+func (h *propertyHandlers) SavePropertyForm() echo.HandlerFunc {
+	return func(c echo.Context) error {
+		ctx := utils.GetRequestCtx(c)
+		requestID := utils.GetRequestID(c)
+		h.log.Info("Handling SavePropertyForm", slog.String("request_id", requestID))
+		r := &request.AddPropertyRequest{}
+
+		if err := utils.ReadRequest(c, r); err != nil {
+			utils.LogResponseError(c, h.log, err)
+			return c.JSON(httpErrors.ErrorResponse(err))
+		}
+
+		err := h.propertyServiceForm.SavePropertyForm(ctx, r)
+		if err != nil {
+			return c.JSON(http.StatusInternalServerError, map[string]string{
+				"error": err.Error(),
+			})
+		}
+
+		return c.JSON(http.StatusCreated, map[string]string{
+			"message": "Property form saved successfully",
+		})
+
+	}
+
 }

@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"github.com/jmoiron/sqlx"
 	"log/slog"
 	"property-managment-service/internal/models"
 	"property-managment-service/internal/property/delivery/http"
@@ -15,6 +16,7 @@ type PropertyRepository interface {
 	GetByOwnerId(ctx context.Context, id int64) ([]*models.Property, error)
 	Update(ctx context.Context, property *models.Property) (*models.Property, error)
 	Delete(ctx context.Context, id int64) (int64, error)
+	SaveWithTx(ctx context.Context, property *models.Property, tx *sqlx.Tx) error
 }
 
 type propertyService struct {
@@ -70,4 +72,9 @@ func (s *propertyService) Update(ctx context.Context, property *models.Property)
 		return nil, err
 	}
 	return property, nil
+}
+
+func (s *propertyService) SaveWithTx(ctx context.Context, property *models.Property, tx *sqlx.Tx) error {
+	property.CreatedAt = time.Now().Format("2006-01-2")
+	return s.propertyRepo.SaveWithTx(ctx, property, tx)
 }

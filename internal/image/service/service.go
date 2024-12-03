@@ -2,7 +2,10 @@ package service
 
 import (
 	"context"
+	"encoding/base64"
+	"fmt"
 	"github.com/google/uuid"
+	"github.com/jmoiron/sqlx"
 	"log/slog"
 	"mime/multipart"
 	"net/http"
@@ -10,10 +13,12 @@ import (
 	"path/filepath"
 	http2 "property-managment-service/internal/image/delivery/http"
 	"property-managment-service/internal/models"
+	"strings"
 )
 
 type ImageRepository interface {
 	SaveImage(ctx context.Context, image *models.Image) (*models.Image, error)
+	SaveImageWithTx(ctx context.Context, image *models.Image, tx *sqlx.Tx) (*models.Image, error)
 	GetImage(ctx context.Context, id int64) (*models.Image, error)
 	GetImagesByPropertyID(ctx context.Context, propertyID int64) ([]models.Image, error)
 }
@@ -67,6 +72,82 @@ func (s *imageService) UploadImage(ctx context.Context, file *multipart.FileHead
 		return err
 	}
 
+	return nil
+}
+
+func (s *imageService) UploadImageFromBase64(ctx context.Context, base64Image string, propertyId int64, tx *sqlx.Tx) error {
+	// Разделяем Base64 строку на часть с MIME-типом и данные
+	parts := strings.SplitN(base64Image, ",", 2)
+	if len(parts) != 2 {
+		return fmt.Errorf("invalid base64 image format")
+	}
+
+	// MIME-тип (например, data:image/png;base64)
+	mimeType := parts[0]
+	imageData := parts[1]
+
+	// Декодируем Base64-строку
+	decodedImage, err := base64.StdEncoding.DecodeString(imageData)
+	if err != nil {
+		return fmt.Errorf("failed to decode base64 image: %w", err)
+	}
+
+	// Определяем расширение файла на основе MIME-типа
+	var ext string
+	switch {
+	case strings.Contains(mimeType, "image/jpeg"):
+		ext = ".jpg"
+	case strings.Contains(mimeType, "image/png"):
+		ext = ".png"
+	case strings.Contains(mimeType, "image/gif"):
+		ext = ".gif"
+	default:
+		return fmt.Errorf("unsupported image type: %s", mimeType)
+	}
+
+	// Уникальное имя файла
+	uniqueID := uuid.New().String()
+	newFileName := fmt.Sprintf("image_%s%s", uniqueID, ext)
+
+	// Путь к директории для загрузки
+	homeDir := "/Users/roflandown/Desktop"
+	uploadDir := filepath.Join(homeDir, "images")
+	if _, err := os.Stat(uploadDir); os.IsNotExist(err) {
+		err := os.MkdirAll(uploadDir, os.ModePerm)
+		if err != nil {
+			return fmt.Errorf("failed to create upload directory: %w", err)
+		}
+	}
+
+	// Путь к файлу
+	dstPath := filepath.Join(uploadDir, newFileName)
+
+	// Записываем данные в файл
+	err = os.WriteFile(dstPath, decodedImage, os.ModePerm)
+	if err != nil {
+		return fmt.Errorf("failed to save image: %w", err)
+	}
+
+	// Сохраняем информацию об изображении в базе данных
+	image := &models.Image{
+		PropertyId: propertyId,
+		ImageUrl:   dstPath,
+	}
+	_, err = s.imageRepo.SaveImageWithTx(ctx, image, tx)
+	if err != nil {
+		return fmt.Errorf("failed to save image record: %w", err)
+	}
+
+	return nil
+}
+
+func (s *imageService) UploadImagesFromBase64(ctx context.Context, base64Images []string, propertyId int64, tx *sqlx.Tx) error {
+	for _, base64Image := range base64Images {
+		err := s.UploadImageFromBase64(ctx, base64Image, propertyId, tx)
+		if err != nil {
+			return fmt.Errorf("failed to upload image: %w", err)
+		}
+	}
 	return nil
 }
 

@@ -60,3 +60,14 @@ func (r *imageRepository) GetImagesByPropertyID(ctx context.Context, propertyID 
 
 	return images, nil
 }
+
+func (r *imageRepository) SaveImageWithTx(ctx context.Context, image *models.Image, tx *sqlx.Tx) (*models.Image, error) {
+	const op = "imageRepository.SaveImage"
+	query := `INSERT INTO properties_images (property_id, image_url) VALUES ($1, $2) RETURNING *`
+
+	// Используем переданную транзакцию
+	if err := tx.QueryRowxContext(ctx, query, image.PropertyId, image.ImageUrl).StructScan(image); err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+	return image, nil
+}

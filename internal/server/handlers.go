@@ -14,20 +14,24 @@ import (
 	propertyHttp "property-managment-service/internal/property/delivery/http"
 	"property-managment-service/internal/property/repository"
 	property "property-managment-service/internal/property/service"
+	"property-managment-service/internal/propertyform/service"
+	"property-managment-service/pkg/db"
 	"property-managment-service/pkg/utils"
 )
 
 func (s *Server) MapHandlers(e *echo.Echo) error {
 	propertyRepo := repository.NewPropertyRepository(s.db)
-	propertyService := property.NewPropertyService(propertyRepo, s.log)
-	propertyHandlers := propertyHttp.NewPropertyHandlers(s.cfg, propertyService, s.log)
-
 	imageRepo := repository2.NewImageRepository(s.db)
-	imageService := image.NewImageService(imageRepo, s.log)
-	imageHandlers := imageHttp.NewImageHandlers(s.cfg, imageService, s.log)
-
 	propertyDetailsRepo := repository3.NewPropDetailsRepository(s.db)
+	transactionManager := db.NewTransactionManager(s.db)
+
+	propertyService := property.NewPropertyService(propertyRepo, s.log)
 	propertyDetailsService := propertyDetails.NewPropertyDetailsService(propertyDetailsRepo, s.log)
+	imageService := image.NewImageService(imageRepo, s.log)
+	propertyFormService := service.NewPropertyFormService(transactionManager, propertyService, imageService, propertyDetailsService)
+
+	propertyHandlers := propertyHttp.NewPropertyHandlers(propertyService, propertyFormService, s.cfg, s.log)
+	imageHandlers := imageHttp.NewImageHandlers(s.cfg, imageService, s.log)
 	propertyDetailsHandlers := propDetailsHttp.NewPropertyDetailsHandlers(propertyDetailsService, s.log)
 
 	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{

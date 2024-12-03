@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"github.com/jmoiron/sqlx"
 	"github.com/labstack/echo/v4"
 	"log/slog"
 	"mime/multipart"
@@ -21,6 +22,8 @@ type ImageService interface {
 	UploadImage(ctx context.Context, file *multipart.FileHeader, propertyId int64) error
 	GetImage(ctx context.Context, id int64) (string, *os.File, error)
 	GetImagesByPropertyId(ctx context.Context, propertyId int64) ([]models.Image, error)
+	UploadImageFromBase64(ctx context.Context, base64Image string, propertyId int64, tx *sqlx.Tx) error
+	UploadImagesFromBase64(ctx context.Context, base64Images []string, propertyId int64, tx *sqlx.Tx) error
 }
 
 type imageHandlers struct {
