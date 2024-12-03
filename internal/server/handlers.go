@@ -8,6 +8,9 @@ import (
 	imageHttp "property-managment-service/internal/image/delivery/http"
 	repository2 "property-managment-service/internal/image/delivery/repository"
 	image "property-managment-service/internal/image/service"
+	propDetailsHttp "property-managment-service/internal/propdetails/delivery/http"
+	repository3 "property-managment-service/internal/propdetails/repository"
+	propertyDetails "property-managment-service/internal/propdetails/service"
 	propertyHttp "property-managment-service/internal/property/delivery/http"
 	"property-managment-service/internal/property/repository"
 	property "property-managment-service/internal/property/service"
@@ -23,6 +26,10 @@ func (s *Server) MapHandlers(e *echo.Echo) error {
 	imageService := image.NewImageService(imageRepo, s.log)
 	imageHandlers := imageHttp.NewImageHandlers(s.cfg, imageService, s.log)
 
+	propertyDetailsRepo := repository3.NewPropDetailsRepository(s.db)
+	propertyDetailsService := propertyDetails.NewPropertyDetailsService(propertyDetailsRepo, s.log)
+	propertyDetailsHandlers := propDetailsHttp.NewPropertyDetailsHandlers(propertyDetailsService, s.log)
+
 	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
 		AllowOrigins:     []string{"http://localhost:3000"},
 		AllowHeaders:     []string{"Content-Type", "Authorization"},
@@ -34,9 +41,11 @@ func (s *Server) MapHandlers(e *echo.Echo) error {
 	health := v1.Group("/health")
 	propertyGroup := v1.Group("/properties")
 	imageGroup := v1.Group("/images")
+	propertyDetailsGroup := v1.Group("/prop-details")
 
 	propertyHttp.MapPropertyRoutes(propertyGroup, propertyHandlers, nil)
 	imageHttp.MapImageRoutes(imageGroup, imageHandlers, nil)
+	propDetailsHttp.MapPropertyDetailsRoutes(propertyDetailsGroup, propertyDetailsHandlers, nil)
 
 	health.GET("", func(c echo.Context) error {
 		s.log.Info(fmt.Sprintf("Health check RequestID: %s", utils.GetRequestID(c)))
