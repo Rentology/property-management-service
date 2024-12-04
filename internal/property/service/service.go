@@ -18,6 +18,7 @@ type PropertyRepository interface {
 	Delete(ctx context.Context, id int64) (int64, error)
 	SaveWithTx(ctx context.Context, property *models.Property, tx *sqlx.Tx) error
 	DeleteWithTx(ctx context.Context, id int64, tx *sqlx.Tx) error
+	GetAll(ctx context.Context) ([]*models.Property, error)
 }
 
 type propertyService struct {
@@ -86,4 +87,12 @@ func (s *propertyService) DeleteWithTx(ctx context.Context, id int64, tx *sqlx.T
 		return err
 	}
 	return nil
+}
+
+func (s *propertyService) GetAll(ctx context.Context) ([]*models.Property, error) {
+	properties, err := s.propertyRepo.GetAll(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return properties, nil
 }

@@ -22,6 +22,7 @@ type PropertyService interface {
 	Update(ctx context.Context, property *models.Property) (*models.Property, error)
 	SaveWithTx(ctx context.Context, property *models.Property, tx *sqlx.Tx) error
 	DeleteWithTx(ctx context.Context, id int64, tx *sqlx.Tx) error
+	GetAll(ctx context.Context) ([]*models.Property, error)
 }
 
 type PropertyFormService interface {
@@ -104,9 +105,15 @@ func (h *propertyHandlers) GetProperties() echo.HandlerFunc {
 				return c.JSON(httpErrors.ErrorResponse(err))
 			}
 			return c.JSON(http.StatusOK, properties)
+		} else {
+			// Если параметры id и ownerId не переданы, возвращаем все записи
+			properties, err := h.propertyService.GetAll(ctx)
+			if err != nil {
+				utils.LogResponseError(c, h.log, err)
+				return c.JSON(httpErrors.ErrorResponse(err))
+			}
+			return c.JSON(http.StatusOK, properties)
 		}
-
-		return c.JSON(http.StatusBadRequest, httpErrors.NewBadRequestError("either id or ownerId must be provided"))
 	}
 }
 
@@ -213,5 +220,23 @@ func (h *propertyHandlers) DeletePropertyForm() echo.HandlerFunc {
 		return c.JSON(http.StatusCreated, map[string]string{
 			"message": "Property removed successfully",
 		})
+	}
+}
+
+func (h *propertyHandlers) GetAllProperties() echo.HandlerFunc {
+	return func(c echo.Context) error {
+		ctx := utils.GetRequestCtx(c)
+		requestID := utils.GetRequestID(c)
+		h.log.Info("Handling GetAllProperties", slog.String("request_id", requestID))
+
+		// Получаем все записи недвижимости через сервис
+		properties, err := h.propertyService.GetAll(ctx)
+		if err != nil {
+			utils.LogResponseError(c, h.log, err)
+			return c.JSON(httpErrors.ErrorResponse(err))
+		}
+
+		// Отправляем данные в ответе
+		return c.JSON(http.StatusOK, properties)
 	}
 }

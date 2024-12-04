@@ -125,3 +125,28 @@ func (r *propertyRepository) DeleteWithTx(ctx context.Context, id int64, tx *sql
 	}
 	return nil
 }
+
+func (r *propertyRepository) GetAll(ctx context.Context) ([]*models.Property, error) {
+	const op = "propertyRepository.getAll"
+	query := `SELECT * FROM properties`
+	rows, err := r.Db.QueryxContext(ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+	defer rows.Close()
+
+	properties := []*models.Property{}
+	for rows.Next() {
+		property := &models.Property{}
+		if err := rows.StructScan(property); err != nil {
+			return nil, fmt.Errorf("%s: failed to scan row: %w", op, err)
+		}
+		properties = append(properties, property)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+
+	return properties, nil
+}
